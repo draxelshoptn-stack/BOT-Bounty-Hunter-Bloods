@@ -144,10 +144,24 @@ async function startBot() {
     console.log(`[Bot] Logged in as ${ready.user.tag}`);
     startTime = new Date();
 
-    // Register slash commands
-    const rest = new REST({ version: "10" }).setToken(token);
+    const rest    = new REST({ version: "10" }).setToken(token);
     const guildId = process.env.GUILD_ID;
-    const route   = guildId
+
+    // ── Clear ALL old commands first (removes duplicates from any previous instance)
+    try {
+      await rest.put(Routes.applicationCommands(ready.user.id), { body: [] });
+      const guilds = await rest.get(Routes.userGuilds());
+      for (const g of guilds) {
+        try { await rest.put(Routes.applicationGuildCommands(ready.user.id, g.id), { body: [] }); }
+        catch { /* no permission for this guild — skip */ }
+      }
+      console.log("[Bot] Old commands cleared");
+    } catch (e) {
+      console.warn("[Bot] Could not clear old commands:", e.message);
+    }
+
+    // ── Register fresh commands
+    const route = guildId
       ? Routes.applicationGuildCommands(ready.user.id, guildId)
       : Routes.applicationCommands(ready.user.id);
     await rest.put(route, { body: slashCommands.map(c => c.toJSON()) });
