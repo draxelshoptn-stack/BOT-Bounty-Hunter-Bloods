@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bot Control Panel</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e1117;
+      --surface:   #161b22;
+      --surface2:  #1c2130;
+      --border:    #30363d;
+      --accent:    #5865f2;
+      --accent-h:  #4752c4;
+      --green:     #3ba55d;
+      --red:       #ed4245;
+      --yellow:    #faa61a;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --radius:    12px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; display: flex; flex-direction: column; flex-shrink: 0; }
+    .logo { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .logo h1 { font-size: 15px; font-weight: 700; color: var(--text); }
+    .logo span { font-size: 12px; color: var(--muted); }
+    nav a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; color: var(--muted); text-decoration: none; border-left: 3px solid transparent; transition: .15s; cursor: pointer; }
+    nav a:hover { color: var(--text); background: rgba(255,255,255,.04); }
+    nav a.active { color: var(--text); border-left-color: var(--accent); background: rgba(88,101,242,.12); }
+    nav a svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-foot { margin-top: auto; padding: 16px 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
+    #sideStatus { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-right: 6px; vertical-align: middle; }
+
+    /* ── Main ── */
+    main { flex: 1; padding: 32px; overflow-y: auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+
+    /* ── Cards ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .card label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+    .card .val { font-size: 22px; font-weight: 700; margin-top: 6px; }
+    .card .val.sm { font-size: 15px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .badge.online  { background: rgba(59,165,93,.18);  color: var(--green); }
+    .badge.offline { background: rgba(237,66,69,.18);  color: var(--red);   }
+    .badge::before { content:""; width:7px; height:7px; border-radius:50%; background: currentColor; }
+
+    /* ── Broadcast ── */
+    .row2 { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+    .box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .box h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+    textarea, input[type=text] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; padding: 12px; resize: vertical; outline: none; font-family: inherit; transition: border-color .15s; }
+    textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+    textarea { min-height: 140px; }
+    .char { font-size: 12px; color: var(--muted); text-align: right; margin-top: 6px; }
+    .warn { font-size: 12px; color: var(--yellow); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+    button { cursor: pointer; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; padding: 11px 20px; transition: .15s; font-family: inherit; }
+    .btn-primary { background: var(--accent); color: #fff; width: 100%; margin-top: 14px; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-h); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-danger  { background: rgba(237,66,69,.15); color: var(--red); border: 1px solid rgba(237,66,69,.3); padding: 9px 16px; font-size: 13px; }
+    .btn-danger:hover:not(:disabled)  { background: rgba(237,66,69,.25); }
+    .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .stat-row:last-child { border: none; }
+    .stat-row span:last-child { font-weight: 600; }
+
+    /* ── History table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; padding: 10px 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border: none; }
+    .msg-cell { max-width: 380px; word-break: break-word; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .pill.ok  { background: rgba(59,165,93,.15);  color: var(--green); }
+    .pill.err { background: rgba(237,66,69,.15);  color: var(--red);   }
+    .empty { text-align: center; padding: 48px; color: var(--muted); font-size: 14px; }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 14px; transform: translateY(80px); opacity: 0; transition: .3s; z-index: 999; max-width: 320px; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.ok  { border-left: 3px solid var(--green); }
+    #toast.err { border-left: 3px solid var(--red);   }
+
+    /* ── Settings ── */
+    .field { margin-bottom: 18px; }
+    .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .field input { font-size: 13px; }
+    .voice-status { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; }
+    .voice-status span { font-size: 13px; }
+
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .row2 { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo"><h1>Bot Control</h1><span>Admin Panel</span></div>
+  <nav>
+    <a class="active" onclick="show('overview',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview
+    </a>
+    <a onclick="show('history',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      History
+    </a>
+    <a onclick="show('settings',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </a>
+  </nav>
+  <div class="sidebar-foot"><span id="sideStatus"></span><span id="sideLabel">Offline</span></div>
+</aside>
+
+<!-- Main -->
+<main>
+
+  <!-- Overview -->
+  <div id="page-overview" class="page active">
+    <h2>Overview</h2>
+    <p class="sub">Live bot status and quick broadcast.</p>
+
+    <div class="cards">
+      <div class="card">
+        <label>System Status</label>
+        <div class="val sm" id="s-name">—</div>
+        <div id="s-badge" class="badge offline">Offline</div>
+      </div>
+      <div class="card">
+        <label>Connected Guild</label>
+        <div class="val sm" id="s-guild">—</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px"><span id="s-members">0</span> members</div>
+      </div>
+      <div class="card">
+        <label>Uptime</label>
+        <div class="val" id="s-uptime">—</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">Since last restart</div>
+      </div>
+      <div class="card">
+        <label>Voice Presence</label>
+        <div class="val sm" id="s-voice">Not Joined</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px" id="s-voicesub">No channel lock</div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="box">
+        <h3>📢 Quick Broadcast</h3>
+        <textarea id="msg" maxlength="2000" placeholder="Type your announcement here..." oninput="document.getElementById('charCount').textContent=this.value.length+' / 2000'"></textarea>
+        <div class="char"><span id="charCount">0 / 2000</span></div>
+        <div class="warn">⚠ This will DM every member. Cannot be undone.</div>
+        <button class="btn-primary" id="sendBtn" onclick="sendAnnouncement()">Send Broadcast</button>
+      </div>
+      <div class="box">
+        <h3>Impact Stats</h3>
+        <div class="stat-row"><span>Total Sent</span><span id="st-total">0</span></div>
+        <div class="stat-row"><span>Members Reached</span><span id="st-reached">0</span></div>
+        <div class="stat-row"><span>Last Sent</span><span id="st-last">Never</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="page-history" class="page">
+    <h2>History</h2>
+    <p class="sub">All announcements sent through the bot.</p>
+    <div class="box">
+      <table>
+        <thead><tr><th>Message</th><th>Sent</th><th>Failed</th><th>Date</th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+      <div id="histEmpty" class="empty">No announcements yet.</div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="page-settings" class="page">
+    <h2>Settings</h2>
+    <p class="sub">Configure the bot's voice channel.</p>
+    <div class="box" style="max-width:520px">
+      <h3>🔊 Voice Channel Lock</h3>
+      <div style="margin-bottom:20px">
+        <div class="voice-status">
+          <span>Status</span>
+          <span id="v-status" style="color:var(--muted)">Not in any channel</span>
+        </div>
+        <button class="btn-danger" id="leaveBtn" onclick="leaveVoice()" disabled>Leave Voice Channel</button>
+      </div>
+      <div class="field">
+        <label>Voice Channel ID</label>
+        <input type="text" id="channelId" placeholder="e.g. 1234567890123456789" />
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">Enable Developer Mode in Discord → right-click the voice channel → Copy ID</div>
+      </div>
+      <button class="btn-primary" onclick="joinVoice()">Join & Lock Channel</button>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ─── Navigation ─────────────────────────────────────────────────────────────
+  function show(page, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    el.classList.add('active');
+    if (page === 'history') loadHistory();
+  }
+
+  // ─── Toast ───────────────────────────────────────────────────────────────────
+  let toastTimer;
+  function toast(msg, type = 'ok') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.className = '', 3500);
+  }
+
+  // ─── API helper ──────────────────────────────────────────────────────────────
+  const SECRET = localStorage.getItem('adminSecret') || '';
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    const s = localStorage.getItem('adminSecret');
+    if (s) headers['Authorization'] = 'Bearer ' + s;
+    const r = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+    return r.json();
+  }
+
+  // ─── Status polling ──────────────────────────────────────────────────────────
+  function fmtUptime(s) {
+    if (!s) return '—';
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h ? `${h}h ${m}m` : m ? `${m}m ${sec}s` : `${sec}s`;
+  }
+
+  async function refreshStatus() {
+    try {
+      const [st, stats] = await Promise.all([api('/api/status'), api('/api/stats')]);
+      // Sidebar
+      const dot = document.getElementById('sideStatus');
+      const lbl = document.getElementById('sideLabel');
+      dot.style.background  = st.online ? 'var(--green)' : 'var(--red)';
+      lbl.textContent       = st.online ? st.botName : 'Offline';
+      // Cards
+      document.getElementById('s-name').textContent  = st.botName || '—';
+      document.getElementById('s-guild').textContent = st.guildName || '—';
+      document.getElementById('s-members').textContent = st.memberCount ?? 0;
+      document.getElementById('s-uptime').textContent  = fmtUptime(st.uptimeSeconds);
+      document.getElementById('s-voice').textContent   = st.voiceChannelName || 'Not Joined';
+      document.getElementById('s-voicesub').textContent = st.voiceLocked ? '🔒 Locked' : 'No channel lock';
+      const badge = document.getElementById('s-badge');
+      badge.className   = 'badge ' + (st.online ? 'online' : 'offline');
+      badge.textContent = st.online ? 'Online' : 'Offline';
+      // Stats
+      document.getElementById('st-total').textContent   = stats.totalAnnouncements;
+      document.getElementById('st-reached').textContent = stats.membersReached;
+      document.getElementById('st-last').textContent    = stats.lastAnnouncedAt ? new Date(stats.lastAnnouncedAt).toLocaleString() : 'Never';
+      // Settings voice
+      const vSt = document.getElementById('v-status');
+      const lBtn = document.getElementById('leaveBtn');
+      if (st.voiceLocked) {
+        vSt.textContent = '🔊 ' + (st.voiceChannelName || st.voiceChannelId);
+        vSt.style.color = 'var(--green)';
+        lBtn.disabled = false;
+      } else {
+        vSt.textContent = 'Not in any channel';
+        vSt.style.color = 'var(--muted)';
+        lBtn.disabled = true;
+      }
+    } catch {}
+  }
+
+  refreshStatus();
+  setInterval(refreshStatus, 5000);
+
+  // ─── Announce ────────────────────────────────────────────────────────────────
+  async function sendAnnouncement() {
+    const msg = document.getElementById('msg').value.trim();
+    if (!msg) return toast('Please enter a message.', 'err');
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const r = await api('/api/announce', { method: 'POST', body: JSON.stringify({ message: msg }) });
+      toast(`✅ Sent to ${r.sent} members (${r.failed} failed)`);
+      document.getElementById('msg').value = '';
+      document.getElementById('charCount').textContent = '0 / 2000';
+      refreshStatus();
+    } catch (e) { toast('❌ ' + e.message, 'err'); }
+    finally { btn.disabled = false; btn.textContent = 'Send Broadcast'; }
+  }
+
+  // ─── History ─────────────────────────────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      const rows = await api('/api/announcements');
+      const body  = document.getElementById('histBody');
+      const empty = document.getElementById('histEmpty');
+      if (!rows.length) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      body.innerHTML = rows.map(r => `
+        <tr>
+          <td class="msg-cell">${escHtml(r.message)}</td>
+          <td><span class="pill ok">${r.sentCount}</span></td>
+          <td><span class="pill ${r.failedCount ? 'err' : 'ok'}">${r.failedCount}</span></td>
+          <td style="white-space:nowrap;color:var(--muted)">${new Date(r.sentAt).toLocaleString()}</td>
+        </tr>`).join('');
+    } catch {}
+  }
+
+  function escHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ─── Voice ───────────────────────────────────────────────────────────────────
+  async function joinVoice() {
+    const id = document.getElementById('channelId').value.trim();
+    if (!id) return toast('Please enter a channel ID.', 'err');
+    try {
+      const r = await api('/api/voice', { method: 'POST', body: JSON.stringify({ channelId: id }) });
+      toast(`🔒 Locked to #${r.channelName || id}`);
+      refreshStatus();
+    } catch (e) { toast('❌ ' + e.message, 'err'); }
+  }
+
+  async function leaveVoice() {
+    try {
+      await api('/api/voice/leave', { method: 'POST' });
+      toast('👋 Left the voice channel.');
+      refreshStatus();
+    } catch (e) { toast('❌ ' + e.message, 'err'); }
+  }
+</script>
+</body>
+</html>
