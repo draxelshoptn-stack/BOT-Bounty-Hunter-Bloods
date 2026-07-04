@@ -1,0 +1,18 @@
+{
+  "name": "discord-bot-complete",
+  "version": "1.0.0",
+  "description": "Discord bot with web control panel — DM broadcast + permanent voice lock",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev":   "node --watch index.js"
+  },
+  "dependencies": {
+    "@discordjs/opus":  "^0.10.0",
+    "@discordjs/voice": "^0.19.2",
+    "discord.js":       "^14.16.0",
+    "dotenv":           "^16.4.5",
+    "express":          "^4.19.2"
+  },
+  "engines": { "node": ">=18.0.0" }
+}
